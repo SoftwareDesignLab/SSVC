@@ -51,7 +51,8 @@ Once anaconda creates your environment, open your classifiers' repo directory in
 In the bottom right of the IDE there will be an area where you may or may not have a Python interpreter setup. It will likely default to a version of Python you have installed.
 
 Click Python 3.X or whichever version displayed (if there is one), once you do that a dropdown will appear like the following:
-![add interpreter.png](environment/readme_media/add interpreter.png)
+
+![add interpreter.png](environment%2Freadme_media%2Fadd%20interpreter.png)
 
 Once it pops up, click Add New Interpreter, and then add local interpreter. A menu will pop up that will have options on the left, you are looking to click 
 **Conda Environment** on the left side. It will then load anaconda environments automatically, and you should be able to find TF_GPU or whichever name that you chose for your 
