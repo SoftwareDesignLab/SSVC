@@ -56,7 +56,7 @@ Click Python 3.X or whichever version displayed (if there is one), once you do t
 
 Once it pops up, click Add New Interpreter, and then add local interpreter. A menu will pop up that will have options on the left, you are looking to click 
 **Conda Environment** on the left side. It will then load anaconda environments automatically, and you should be able to find TF_GPU or whichever name that you chose for your 
-environment. Click that and click apply, and it will then have your PyCharm index a lot of libarries, which will take a couple minutes and then your code should be errorless and ready to run!
+environment. Click that and click apply, and it will then have your PyCharm index a lot of libraries, which will take a couple of minutes and then your code should be errorless and ready to run!
 
 ## Usage
 In terms of using the code you have a relatively straight forward command line usage that is written out with examples of how to run things along with descriptions of each command.
@@ -70,7 +70,7 @@ The following example of a command input that is unsupported and will not work w
 
 `enter a command: tat New Model training/new model data.csv 100 16`
 
-The reason the command will not work is because there are spaces with the model name along with the file directory. 
+The reason the command will not work because there are spaces with the model name along with the file directory. 
 
 The following command is fully supported and is how you need to run commands (no matter the command) with the current version of the script
 `enter a command: tat New_Model training/new_model_data.csv 100 16`
