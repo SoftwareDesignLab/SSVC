@@ -1,9 +1,77 @@
 # Technical Impact decision value
 This folder contains documents related to the automating the technical impact decision point for SSVC scoring. It contains machine learning models for classifying the technical impacts of given vulnerabilities based on their vulnerability descriptions. 
 
-# What are these scripts?
+## What are the classifiers used for?
+
+### Impact Classifier
+The impact classifier is a BERT Binary classification model that utilizes text classification to take in CVE descriptions and output a technical impact binary value of total or partial impact. Total impact represents when 
+
+In terms of data processing and input the code and model accepts intake of CSV files that are in the format of the following:
+
+```
+Text,Class
+Desc,total
+Desc2,partial
+```
+It is important to note that these CSV headers are **case-sensitive**, and you will run into errors when training if you do not follow the casings above.
+
+### Confidentiality/Integrity (CI) Classifier
+The CI classifier is a BERT multi-class classification model that utilizes text classification to take in CVE descriptions and output a value for its confidentiality or confidentiality. this output is either NONE, LOW or HIGH in regard of what severity of impact that the CVE had on either confidentiality or integrity.
+
+It is important to note that you must run an experiment to identify confidentiality OR an experiment to determine integrity. These experiments cannot intermix. 
 
 
-# How to set up your environment:
 
-# How to use these scripts:
+In terms of data processing and input the code and model accepts intake of CSV files that are in the format of the following:
+
+```
+Text,Class
+Desc,LOW
+Desc2,NONE
+Desc3,HIGH
+```
+It is important to note that these CSV headers are **case-sensitive**, and you will run into errors when training if you do not follow the casings above.
+Another requirement is that the classes should all be capitalized to run effectively with no issues. 
+
+
+## Set up your environment to run
+
+Firstly you need to download and install [Anaconda](https://www.anaconda.com/download)
+
+Once installed open **Anaconda Navigator**, navigate to the environments tab on the left side of the navigator. 
+
+Once there press the import button and import the yml that is found in the `environment` folder.
+This will create the environment that was created and ran while developing these classifiers, and allow for GPU usage with Tensorflow if your computer supports it.
+
+![anaconda import.png](environment%2Freadme_media%2Fanaconda%20import.png)
+
+
+Once anaconda creates your environment, open your classifiers' repo directory in PyCharm and you will likely have a lot of errors, which is to be expected. You have to set your environment to the anaconda environment we just created.
+
+In the bottom right of the IDE there will be an area where you may or may not have a Python interpreter setup. It will likely default to a version of Python you have installed.
+
+Click Python 3.X or whichever version displayed (if there is one), once you do that a dropdown will appear like the following:
+![add interpreter.png](environment/readme_media/add interpreter.png)
+
+Once it pops up, click Add New Interpreter, and then add local interpreter. A menu will pop up that will have options on the left, you are looking to click 
+**Conda Environment** on the left side. It will then load anaconda environments automatically, and you should be able to find TF_GPU or whichever name that you chose for your 
+environment. Click that and click apply, and it will then have your PyCharm index a lot of libarries, which will take a couple minutes and then your code should be errorless and ready to run!
+
+## Usage
+In terms of using the code you have a relatively straight forward command line usage that is written out with examples of how to run things along with descriptions of each command.
+
+There is one very important factor that needs to be addressed before your start having your computer start training models and running experiments.
+The code is not supportive of file names with spaces or spaces in arguments.
+
+We will take the Train and Test command for example.
+
+The following example of a command input that is unsupported and will not work with the code currently in place. 
+
+`enter a command: tat New Model training/new model data.csv 100 16`
+
+The reason the command will not work is because there are spaces with the model name along with the file directory. 
+
+The following command is fully supported and is how you need to run commands (no matter the command) with the current version of the script
+`enter a command: tat New_Model training/new_model_data.csv 100 16`
+
+This command will train a model for 100 epochs with a 16 batch size, along with 5-fold cross validation. Good luck!
