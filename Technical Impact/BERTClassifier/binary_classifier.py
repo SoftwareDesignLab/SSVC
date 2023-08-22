@@ -4,18 +4,50 @@ import tensorflow_hub as hub
 import pandas as pd
 import re
 from keras.callbacks import CSVLogger
-from datetime import datetime
+from datetime import datetime, time
 import numpy as np
 import statistics
 import nltk
 from keras.optimizers import Adam
-from keras.utils import to_categorical
 from nltk.corpus import stopwords
 # noinspection PyUnresolvedReferences
 import tensorflow_text as text  # do not remove this import, it is required for hub.load()
 from sklearn.model_selection import KFold
 
 PREPROCESS_SEQ_LENGTH = 128
+
+# Modes is a global dictionary of each mode that the classifier can have, and their assigned numeric -> display values
+MODES = {
+    "TECHNICAL_IMPACT": {
+        0: "partial",
+        1: "total"
+    },
+    "AUTOMATABILITY": {
+        0: "NO",
+        1: "YES"
+    }
+}
+
+SELECTED_MODE_NAME = "TECHNICAL_IMPACT"
+SELECTED_MODE_DICT = MODES[SELECTED_MODE_NAME]
+
+
+def update_classifier_mode(new_mode):
+    """
+    Function that updates the mode of the classiifer
+    :param new_mode: mode being switched to
+    :return: Boolean of success
+    """
+    if str(new_mode).upper() not in MODES:
+        print(f"That mode does not exist, valid modes are: {', '.join(MODES.keys())}")
+        return False
+
+    global SELECTED_MODE_NAME
+    SELECTED_MODE_NAME = str(new_mode).upper()
+    global SELECTED_MODE_DICT
+    SELECTED_MODE_DICT = MODES[SELECTED_MODE_NAME]
+    print(f"The model's mode has been updated to {new_mode.upper()}")
+    return True
 
 
 def trim_data(file, export_changes=False):
@@ -83,13 +115,14 @@ def get_bert_model():
     # Init neural network layers
     dropout = 0.1
     layer = tf.keras.layers.Dropout(dropout, name="dropout")(outputs['pooled_output'])
-    # changed sigmoid to softmax for multi class
-    layer = tf.keras.layers.Dense(3, activation='softmax', name="output")(layer)
+    layer = tf.keras.layers.Dense(1, activation='sigmoid', name="output")(layer)
 
     model = tf.keras.Model(inputs=text_input, outputs=[layer])
     # model metrics
     metrics = [
-        tf.keras.metrics.CategoricalAccuracy(name='accuracy'),
+        tf.keras.metrics.BinaryAccuracy(name='accuracy'),
+        tf.keras.metrics.Precision(name='precision'),
+        tf.keras.metrics.Recall(name='recall'),
         tf.keras.metrics.AUC(
             num_thresholds=200,
             curve='ROC',
@@ -104,9 +137,8 @@ def get_bert_model():
         )
     ]
 
-    # changed loss from binary crossentropy to categorical
-    model.compile(optimizer=Adam(),
-                  loss='categorical_crossentropy',
+    model.compile(optimizer=Adam(learning_rate=.001),
+                  loss='binary_crossentropy',
                   metrics=metrics)
 
     return model
@@ -115,7 +147,7 @@ def get_bert_model():
 def train_model(file_name, training_name, epochs, batch_size=32, downsample=True, stopword=False, folds=5):
     """
     Function that trains a new model using a bert classifier from intake of a csv file
-    with the format of CVE Descriptions (C I Description) and Tech Class (total or partial)
+    with the format of CVE Descriptions [Text] (C I Description) and a Decision value
     and would then train a model with user supplied amount of epochs
     :param file_name: csv file
     :param training_name: name of the model
@@ -133,45 +165,29 @@ def train_model(file_name, training_name, epochs, batch_size=32, downsample=True
     else:
         df = pd.read_csv(file_name)
 
-    # Split into dataframes for none low high df
-    df_none = df[df['Class'] == 'NONE']
-    df_low = df[df['Class'] == 'LOW']
-    df_high = df[df['Class'] == 'HIGH']
+    # Split into dataframes for each decision value
+    df_0 = df[df['Decision'] == SELECTED_MODE_DICT[0]]
+    df_1 = df[df['Decision'] == SELECTED_MODE_DICT[1]]
 
-    # assigning size of the samples in a dict to determine
-    # which is lowest (for downsampling purposes
-    raw_class_sizes = {'NONE': len(df_none.index),
-                       'LOW': len(df_low.index),
-                       'HIGH': len(df_high.index)}
-
-    min_num_classes = min(raw_class_sizes.values())
-
-    # Downsampling the dataset to an equal amount of samples.
+    # Downsampling larger sample size to match smaller amounts
     if downsample:
-        print(f"Downsampling is enabled! The samples will be cut to {min_num_classes} samples of each class.")
-        for key in ["NONE", "LOW", "HIGH"]:
-            if min_num_classes == raw_class_sizes[key]:
-                print(f"The sample number is based on the lowest class size available. In this sample the lowest class size available is {key}")
-                if key == "NONE":
-                    df_low = df_low.sample(n=raw_class_sizes['NONE'])
-                    df_high = df_high.sample(n=raw_class_sizes['NONE'])
-                elif key == "LOW":
-                    df_none = df_none.sample(n=raw_class_sizes['LOW'])
-                    df_high = df_high.sample(n=raw_class_sizes['LOW'])
-                elif key == "HIGH":
-                    df_low = df_low.sample(n=raw_class_sizes['HIGH'])
-                    df_none = df_none.sample(n=raw_class_sizes['HIGH'])
+        #
+        if df_1.shape[0] > df_0.shape[0]:
+            df_1 = df_1.sample(n=df_0.shape[0])
+            print(f"Downsampling is enabled, the training will be downsampled to {SELECTED_MODE_DICT[0]}'s size with {df_0.shape[0]} samples each.")
+        else:
+            df_0 = df_0.sample(n=df_1.shape[0])
+            print(f"Downsampling is enabled, the training will be downsampled to {SELECTED_MODE_DICT[1]}'s size with {df_1.shape[0]} samples each.")
+
 
     # Create unified balanced dataframe
-    df_balanced = pd.concat([df_none, df_low, df_high])
-
-    # reindex the concatanated dataframe so the inputs work properly.
+    df_balanced = pd.concat([df_1, df_0])
     df_balanced = df_balanced.reset_index(drop=True)
-    df_balanced["total"] = df_balanced['Class'].map({"NONE": 0,
-                                                     "LOW": 1,
-                                                     "HIGH": 2})
+    df_balanced['total'] = df_balanced['Decision'].apply(lambda x: 1 if str(x).lower() == SELECTED_MODE_DICT[1].lower() else 0)
+
     inputs = df_balanced['Text']
-    targets = to_categorical(df_balanced['total'], 3)
+    targets = df_balanced['total']
+
     # make working dir
     try:
         os.mkdir(f"./models/{training_name}")
@@ -211,52 +227,37 @@ def train_model(file_name, training_name, epochs, batch_size=32, downsample=True
 
         print(f"(FOLD {fold_no}) Evaluating model")
         y_predicted = model.predict(in_test)
+        y_predicted = y_predicted.flatten()
 
-        max_values = y_predicted.max(axis=1).reshape(-1, 1)
-        y_predicted = np.where(y_predicted == max_values, 1, 0)
-        # print(y_predicted)
+        # Set prediction to 1 if > confidence_interval
+        confidence_interval = 0.5
+        y_predicted = np.where(y_predicted > confidence_interval, 1, 0)
 
         # Save the model for this fold
         model.save(f"./models/{training_name}/fold_{fold_no}")
         # Create data obj for pandas dataframe
         data = []
         for i, cve in enumerate(in_test):
-            pred = y_predicted[i]
-            none_array = [1, 0, 0]
-            low_array = [0, 1, 0]
-            high_array = [0, 0, 1]
-            if np.array_equal(pred, none_array):
-                data.append([cve, "NONE"])
-            elif np.array_equal(pred, low_array):
-                data.append([cve, "LOW"])
-            elif np.array_equal(pred, high_array):
-                data.append([cve, "HIGH"])
-            else:
-                # assign improper prediction if there is predictions that classified into a non-accepted format
-                data.append([cve, f"IMPROPER PREDICTION {pred}"])
+            # create decision string of based off the current model's mode, see global MODES variable's for specifics
+            decision = SELECTED_MODE_DICT[1] if y_predicted[i] == 1 else SELECTED_MODE_DICT[0]
+            data.append([cve, decision])
 
         # Create predictions data frame
-        pdf = pd.DataFrame(data, columns=["Description", "Class"])
+        pdf = pd.DataFrame(data, columns=["description", "decision"])
         pdf.to_csv(f"./models/{training_name}/fold_{fold_no}/predictions.csv", index=False)
-        print(f"(FOLD {fold_no}) CSV File for the predictions made in this training have been exported.")
-        predictions_data = analyze_predictions(file_name, f'models/{training_name}/fold_{fold_no}/predictions.csv',
-                                               create_new_file=False,
-                                               trim_descs=stopword)
-
+        print(f"(FOLD {fold_no}) CSV File for the predictions made in this training have bene exported.")
+        analyze_predictions(file_name, f'models/{training_name}/fold_{fold_no}/predictions.csv', create_new_file=False,
+                            trim_descs=stopword)
+        check_positives(f'models/{training_name}/fold_{fold_no}/predictions.csv')
         # calc f1 score
+        calculate_f1_score(f"./models/{training_name}/fold_{fold_no}/log.csv")
         # test predictions evaluation
         evaluated = model.evaluate(in_test, targets_test, batch_size=batch_size)
-        evaluated.extend(predictions_data.values())
         fold_scores.append(evaluated)
-
         # assign statistics of prediction
         predictions_data = list_to_data_dict(evaluated)
 
-        predictions_log = pd.DataFrame(columns=["loss", "accuracy", "auc",
-                                                "none_precision", "none_recall", "none_f1",
-                                                "low_precision", "low_recall", "low_f1",
-                                                "high_precision", "high_recall", "high_f1",
-                                                "macro_precision", "macro_recall", "macro_f1"],
+        predictions_log = pd.DataFrame(columns=["loss", "accuracy", "auc", "precision", "recall", "f1_score"],
                                        data=predictions_data, index=[0])
 
         predictions_log.to_csv(f"models/{training_name}/fold_{fold_no}/predictions_log.csv", index=False)
@@ -265,15 +266,9 @@ def train_model(file_name, training_name, epochs, batch_size=32, downsample=True
         fold_no += 1
 
     print(f"[{datetime.now().strftime('%H:%M:%S')}] All folds for {training_name} have completed")
-
-    # average all stats, put them into a dictionary and export from a dataframe
     avg_scores = average_fold_stats(fold_scores)
     avg_data = list_to_data_dict(avg_scores)
-    predictions_log = pd.DataFrame(columns=["loss", "accuracy", "auc",
-                                            "none_precision", "none_recall", "none_f1",
-                                            "low_precision", "low_recall", "low_f1",
-                                            "high_precision", "high_recall", "high_f1",
-                                            "macro_precision", "macro_recall", "macro_f1"],
+    predictions_log = pd.DataFrame(columns=["loss", "accuracy", "auc", "precision", "recall", "f1_score"],
                                    data=avg_data, index=[0])
     predictions_log.to_csv(f"models/{training_name}/{folds}_fold_average_log.csv", index=False)
 
@@ -287,36 +282,18 @@ def list_to_data_dict(stats_list):
     """
     loss = stats_list[0]
     accuracy = stats_list[1]
-    auc = stats_list[2]
-    none_precision = stats_list[3]
-    none_recall = stats_list[4]
-    none_f1 = stats_list[5]
-    low_precision = stats_list[6]
-    low_recall = stats_list[7]
-    low_f1 = stats_list[8]
-    high_precision = stats_list[9]
-    high_recall = stats_list[10]
-    high_f1 = stats_list[11]
-    macro_precision_average = stats_list[12]
-    macro_recall_average = stats_list[13]
-    macro_f1_average = stats_list[14]
+    precision = stats_list[2]
+    recall = stats_list[3]
+    auc = stats_list[4]
+    f1_score = safe_divide(2 * (precision * recall), (precision + recall))
 
     data = {
         "loss": loss,
         "accuracy": accuracy,
         "auc": auc,
-        "none_precision": none_precision,
-        "none_recall": none_recall,
-        "none_f1": none_f1,
-        "low_precision": low_precision,
-        "low_recall": low_recall,
-        "low_f1": low_f1,
-        "high_precision": high_precision,
-        "high_recall": high_recall,
-        "high_f1": high_f1,
-        "macro_precision": macro_precision_average,
-        "macro_recall": macro_recall_average,
-        "macro_f1": macro_f1_average
+        "precision": precision,
+        "recall": recall,
+        "f1_score": f1_score
     }
 
     return data
@@ -328,10 +305,10 @@ def print_help():
     :return:
     """
     print("")
-    print("SSVC Technical Impact Confidentiality/Integrity Class classifier (BERT):")
+    print("SSVC Technical Impact classifier (BERT):")
     print_command("Train and Test",
                   "Trains and tests a new model from a csv file using user specified input and 5 fold cross validation.",
-                  "tat <model_name> <train_file> <epochs> (batch_size: default 32) (stopword: y/n)",
+                  "tat <model_name> <train_file> <epochs> (batch_size: default 32) (stpoword: y/n)",
                   "tat 100_examples 100_examples_even.csv 100 16")
     print("")
     print_command("Analyze Training Wordcount",
@@ -345,8 +322,18 @@ def print_help():
     print_command("Display Preprocesses Training Data", "Preprocesses and exports a training file",
                   "preproc <training_file>", "preproc 1000_examples.csv")
     print("")
-    print("Quit - terminates program")
+    print_command("Check Positives and Negatives", "Check the negatives and positives of a checked predictions file",
+                  "positives <checked_predictions_file", "positives models/100_epochs/predictions.csv")
     print("")
+    print_command("Predict Values", "Takes in a CSV file containing CVE descriptions, a model and fold number, and outputs predictions.",
+                  "predict <model> <file> <fold> (confidence interval: 0.5 default)", "predict 100samples to_predict.csv 4 0.6")
+    print("")
+    print_command("Change Model Mode", "Changes the mode of the model.", "mode <mode>", "mode technical_impact")
+    print("")
+    print("Quit - terminates program")
+    print("Help - displays this")
+    print("")
+    print(f"Current model mode: {SELECTED_MODE_NAME}")
 
 
 def print_command(name, description, syntax, example):
@@ -362,6 +349,31 @@ def print_command(name, description, syntax, example):
     print(f"\tDescription: {description}")
     print(f"\tSyntax: {syntax}")
     print(f"\t\tex: {example}")
+
+
+def calculate_f1_score(file):
+    """
+    Loads a CSV file of training statistics and calculates and appends F1 score to CSV
+    :param file:
+    :return:
+    """
+    # read the csv info pandas
+    df = pd.read_csv(file, index_col=[0])
+    df.reset_index()
+    # create a list of the f1 scores that will be written into the csv
+    f1_scores = []
+    # calculate f1_score for each row and append to list
+    for index, row in df.iterrows():
+        precision = row["precision"]
+        recall = row["recall"]
+        f1_score = 2 * (precision * recall) / (precision + recall)
+        f1_scores.append(f1_score)
+
+    # create new column
+    df['f1_score'] = f1_scores
+
+    # export new file
+    df.to_csv(file)
 
 
 def average_fold_stats(lists):
@@ -424,13 +436,129 @@ def analyze_file_wordcounts(file):
     text_info = text_info.append({"over_128": over_128, "largest_count": largest, "average_count": average,
                                   "median": statistics.median(word_counts)}, ignore_index=True)
     long_df = pd.DataFrame(data=long_cves)
-    safe_mk_dir("./data_analysis")
+    try:
+        # make dir if it doesn't exist
+        os.mkdir("./data_analysis")
+    except FileExistsError:
+        pass
 
     # get just the filename
     file = re.sub(".*/", "", file)
 
     text_info.to_csv(f'./data_analysis/{file.replace(".csv", "_word_data.csv")}', index=False)
     long_df.to_csv(f'./data_analysis/{file.replace(".csv", "_long_cve.csv")}', index=False)
+
+
+def analyze_predictions(training_file_path, predictions_file_path, create_new_file=True, trim_descs=True):
+    """
+    Loads the training file and the predictions file of a model and determines the predictions
+    correctness via another row given.
+    :param training_file_path: trainings files
+    :param predictions_file_path: predictions file
+    :param create_new_file: boolean representing whether a separate file should be produced to show prediction correctness
+    :param trim_descs: Whether the analysis trims descriptions or not
+    :return:
+    """
+    # read the csvs into pandas
+    if trim_descs:
+        training_file = trim_data(training_file_path)  # have to send through preprocessor
+    else:
+        training_file = pd.read_csv(training_file_path)
+    training_file.reset_index()
+
+    predictions_file = pd.read_csv(predictions_file_path)
+    predictions_file.reset_index()
+    # create a list of the correct or incorrect
+    correct = []
+    # calculate f1_score for each row and append to list
+    for index, row in predictions_file.iterrows():
+        desc = row["description"]
+        impact = row["decision"]
+
+        search = training_file[(training_file["Text"] == desc)]
+        train_data_impact = search.iloc[0]['Decision']
+
+        # add result to list based on if search and impact match
+        correct.append("correct" if str(train_data_impact).lower() == impact.lower() else "incorrect")
+    # create new column
+    predictions_file['correct'] = correct
+
+    # export new file
+    if create_new_file:
+        predictions_file.to_csv(predictions_file_path.replace(".csv", "_checked.csv"), index=False)
+    else:
+        # Write to already created predictions file
+        predictions_file.to_csv(predictions_file_path, index=False)
+
+
+def get_predictions_list(text, predicted_values, include_desc_in_return = False, confidence_interval = 0.5):
+    """
+    This function is to take text that the model is predicting along with the numerical values that the model
+    had predicted, and then it will return a list of the predictions in plain text.
+    :param text: List of values that the model is predicting
+    :param predicted_values: List of values that the model returned
+    :param include_desc_in_return: Boolean value dictating whether the list returned contains the description as well.
+    :param confidence_interval: Confidence interval that determines if it should be a 1 instead of a 0.
+    :return: list of string predictions
+    """
+    predicted_values = np.where(predicted_values > confidence_interval, 1, 0)
+
+    # Create data obj for pandas dataframe
+    data = []
+    for i, cve in enumerate(text):
+        # create string of decision based off modes settings (see MODES global for specifics)
+        decision = SELECTED_MODE_DICT[1] if predicted_values[i] == 1 else SELECTED_MODE_DICT[0]
+        if include_desc_in_return:
+            data.append([cve, decision])
+        else:
+            data.append(decision)
+
+    return data
+
+
+def check_positives(checked_predictions_file):
+    """
+    Creates and exports a file that contains true positives, true negatives etc.
+    based off a checked predictions file
+    Final score includes accuracy, precision, recall, f1 score
+    :param checked_predictions_file: predictions file
+    :return:
+    """
+    predictions = pd.read_csv(checked_predictions_file)
+
+    tp = 0  # true positive - correct predicted as 1
+    tn = 0  # true negative - correct predicted as 0
+    fp = 0  # false positive - predicted as 1 should be 0
+    fn = 0  # false negative - 0 should be 0
+
+    for index, row in predictions.iterrows():
+        decision = row['decision']
+        correct = row['correct']
+
+        if decision == SELECTED_MODE_DICT[1] and correct == "correct":
+            # True positive
+            tp += 1
+        elif decision == SELECTED_MODE_DICT[0] and correct == "correct":
+            # True negative
+            tn += 1
+        elif decision == SELECTED_MODE_DICT[1] and correct == "incorrect":
+            # false positive
+            fp += 1
+        elif decision == SELECTED_MODE_DICT[0] and correct == "incorrect":
+            # false negative
+            fn += 1
+
+    # data to put into csv file
+    tp_data = {
+        "tp": tp,
+        "tn": tn,
+        "fp": fp,
+        "fn": fn
+    }
+
+    tp_log = pd.DataFrame(columns=["tp", "tn", "fp", "fn"], index=None)
+    tp_log = tp_log.append(tp_data, ignore_index=True)
+    tp_log.to_csv(checked_predictions_file.replace(".csv", "_positives_log.csv"))
 
 
 def safe_mk_dir(path):
@@ -462,174 +590,49 @@ def safe_divide(numerator, denominator):
     return result
 
 
-def analyze_predictions(training_file_path, predictions_file_path, create_new_file=True, trim_descs=True):
+def predict_data(model_name, data_file, fold=1, confidence_interval=0.5):
     """
-    Loads the training file and the predictions file of a model and determines the predictions
-    correctness via another row given.
-
-    it also calculates the true positives, negatives, false positives, false negatives for each class
-    and exports them alongside.
-    
-    Calculates the precision, recall and f1 scores along with macro average of each stat. Once the calculations 
-    complete a dictionary is created and returned 
-    
-    :param training_file_path: trainings files
-    :param predictions_file_path: predictions file
-    :param create_new_file: boolean representing whether a separate file should be produced to show prediction correctness
-    :param trim_descs: Whether the analysis trims descriptions or not
-    :return eval_data: dictionary of all data created
+    The predict data function is a function that will load an already trained model, and open and process a csv
+    file with CVE descriptions under a header of "Text", and update the csv file with a new "prediction" column with the
+    prediction for that specific cve.
+    :param model_name: name of a trained model in the 'models' folder
+    :param data_file: csv file with the data you want predicted
+    :return:
     """
-    # read the csvs into pandas
-    if trim_descs:
-        training_file = trim_data(training_file_path)  # have to send through preprocessor
-    else:
-        training_file = pd.read_csv(training_file_path)
-    training_file.reset_index()
 
-    predictions_file = pd.read_csv(predictions_file_path)
-    predictions_file.reset_index()
-    # create a list of the correct or incorrect
-    correct = []
-    # calculate f1_score for each row and append to list
+    # get and load weights to the model
+    model = get_bert_model()
+    model.load_weights(f'models/{model_name}/fold_{fold}')
 
-    # initialize variables for positives
-    # none positives
-    none_tp = 0  # true positive - correct predicted as total
-    none_tn = 0  # true negative - correct predicted as partial
-    none_fp = 0  # false positive - predicted as total should be partial
-    none_fn = 0  # false negative - partial should be total
+    df = pd.read_csv(data_file)
+    input = df['Text']
 
-    # low positives
-    low_tp = 0  # true positive - correct predicted as total
-    low_tn = 0  # true negative - correct predicted as partial
-    low_fp = 0  # false positive - predicted as total should be partial
-    low_fn = 0  # false negative - partial should be total
+    predictions = model.predict(input)
+    predictions = predictions.flatten()
+    # Set prediction to 1 if > confidence_interval
+    predictions = np.where(predictions > confidence_interval, 1, 0)
+    data = []
 
-    # high positives
-    high_tp = 0  # true positive - correct predicted as total
-    high_tn = 0  # true negative - correct predicted as partial
-    high_fp = 0  # false positive - predicted as total should be partial
-    high_fn = 0  # false negative - partial should be total
+    for i, cve in enumerate(input):
+        # create string of decision based off modes settings (see MODES global for specifics)
+        decision = SELECTED_MODE_DICT[1] if predictions[i] == 1 else SELECTED_MODE_DICT[0]
+        data.append(decision)  # add to list of predictions to add to df.
 
-    for index, row in predictions_file.iterrows():
-        desc = row["Description"]
-        guessed_ci_class = row["Class"]
+    df['prediction'] = data
+    d = datetime.now().strftime("%m-%d-%Y_%H_%M_%S")
+    # Make predictions folder to house predictions along with info regarding the predictions
+    safe_mk_dir(f"predictions/prediction_{d}")
 
-        search = training_file[(training_file["Text"] == desc)]
-        train_data_class = search.iloc[0]['Class']
-        correct_class = str(train_data_class)
+    df.to_csv(f"predictions/prediction_{d}/predictions.csv", index=False)
 
-        # add result to list based on if search and Class match
-        true_correct = correct_class.lower() == guessed_ci_class.lower()
-        correct.append("correct" if true_correct else "incorrect")
+    # Create a text file with predictions
+    with open(f"predictions/prediction_{d}/prediction_information.txt", "w+") as info:
+        lines = [f"Model Used: {model_name}\n",
+                 f"Weights from fold: {fold}\n",
+                 f"Confidence interval for predictions: {confidence_interval}\n",
+                 f"Predictions made on: {d}"]
 
-        # None true positives
-        if guessed_ci_class == "NONE" and true_correct:
-            # is predicted as NONE and supposed to be NONE
-            none_tp += 1
-        elif not guessed_ci_class == "NONE" and not correct_class == "NONE":
-            # is not predicted as none, and the correct answer is not none
-            none_tn += 1
-        elif guessed_ci_class == "NONE" and not correct_class == "NONE":
-            # is predicted as none, correct answer is not none.
-            none_fp += 1
-        elif not guessed_ci_class == "NONE" and correct_class == "NONE":
-            # is predicted as HIGH or LOW, supposed to be NONE
-            none_fn += 1
-
-        # Low true positives
-        if guessed_ci_class == "LOW" and true_correct:
-            # is predicted as LOW and supposed to be LOW
-            low_tp += 1
-        elif not guessed_ci_class == "LOW" and not correct_class == "LOW":
-            # is not predicted as low, and the correct answer is not low
-            low_tn += 1
-        elif guessed_ci_class == "LOW" and not correct_class == "LOW":
-            # is predicted as low, correct answer is not low.
-            low_fp += 1
-        elif not guessed_ci_class == "LOW" and correct_class == "LOW":
-            # is predicted as HIGH or NONE, supposed to be LOW
-            low_fn += 1
-
-        # High true positives
-        if guessed_ci_class == "HIGH" and true_correct:
-            # is predicted as HIGH and supposed to be HIGH
-            high_tp += 1
-        elif not guessed_ci_class == "HIGH" and not correct_class == "HIGH":
-            # is not predicted as HIGH, and the correct answer is not HIGH
-            high_tn += 1
-        elif guessed_ci_class == "HIGH" and not correct_class == "HIGH":
-            # is predicted as HIGH, correct answer is not HIGH.
-            high_fp += 1
-        elif not guessed_ci_class == "HIGH" and correct_class == "HIGH":
-            # is predicted as NONE or LOW, supposed to be HIGH
-            high_fn += 1
-
-    # create new column
-    predictions_file['correct'] = correct
-
-    positives_header = ["none_tp", "none_tn", "none_fp", "none_fn", "low_tp", "low_tn", "low_fp", "low_fn",
-                        "high_tp", "high_tn", "high_fp", "high_fn"]
-    positives_data = {
-        "none_tp": none_tp,
-        "none_tn": none_tn,
-        "none_fp": none_fp,
-        "none_fn": none_fn,
-        "low_tp": low_tp,
-        "low_tn": low_tn,
-        "low_fp": low_fp,
-        "low_fn": low_fn,
-        "high_tp": high_tp,
-        "high_tn": high_tn,
-        "high_fp": high_fp,
-        "high_fn": high_fn
-    }
-
-    # Create stats for each class
-    none_precision = safe_divide(none_tp, none_tp + none_fp)
-    none_recall = safe_divide(none_tp, none_tp + none_fn)
-    none_f1 = safe_divide(2 * none_precision * none_recall, (none_precision + none_recall))
-
-    low_precision = safe_divide(low_tp, low_tp + low_fp)
-    low_recall = safe_divide(low_tp, (low_tp + low_fn))
-    low_f1 = safe_divide(2 * low_precision * low_recall, low_precision + low_recall)
-
-    high_precision = safe_divide(high_tp, (high_tp + high_fp))
-    high_recall = safe_divide(high_tp, high_tp + high_fn)
-    high_f1 = safe_divide(2 * high_precision * high_recall, high_precision + high_recall)
-
-    macro_precision_average = (none_precision + low_precision + high_precision) / 3
-    macro_recall_average = (none_recall + low_recall + high_recall) / 3
-    macro_f1_average = (none_f1 + low_f1 + high_f1) / 3
-
-    # assign to dict that will be returned 
-    eval_data = {
-        "none_precision": none_precision,
-        "none_recall": none_recall,
-        "none_f1": none_f1,
-        "low_precision": low_precision,
-        "low_recall": low_recall,
-        "low_f1": low_f1,
-        "high_precision": high_precision,
-        "high_recall": high_recall,
-        "high_f1": high_f1,
-        "macro_precision": macro_precision_average,
-        "macro_recall": macro_recall_average,
-        "macro_f1": macro_f1_average
-    }
-
-    # export positives information
-    positives_frame = pd.DataFrame(columns=positives_header, data=positives_data, index=[0])
-    positives_frame.to_csv(predictions_file_path.replace(".csv", "_positives.csv"), index=False)
-
-    # export new file
-    if create_new_file:
-        predictions_file.to_csv(predictions_file_path.replace(".csv", "_checked.csv"), index=False)
-    else:
-        # Write to already created predictions file
-        predictions_file.to_csv(predictions_file_path, index=False)
-
-    return eval_data
+        info.writelines(lines)
 
 
 def main():
@@ -642,11 +645,11 @@ def main():
     safe_mk_dir(f"./models")
     safe_mk_dir(f"./preprocessed")
     safe_mk_dir(f"./data_analysis")
+    safe_mk_dir("./predictions")
 
+    # print help on start
+    print_help()
     while True:
-        # print help
-        print_help()
-
         # intake command from user and split it into its arguments
         command = str(input("enter a command: "))
         args = command.strip().split(" ")
@@ -719,8 +722,36 @@ def main():
                 trim_data(file, True)
             except FileNotFoundError:
                 print("You must enter a valid file name!")
+        elif args[0].lower() == "positives":
+            file = args[1]
+            try:
+                check_positives(file)
+                print("Exported checked file containing true positives,true negatives, false positives, false negatives")
+            except FileNotFoundError:
+                print("You must enter a valid file name!")
+        elif args[0].lower() == "predict":
+            if len(args) <= 4:
+                print("You must enter the correct number of minimal arguments for this command.")
+            else:
+                model = args[1]
+                to_be_predicted = args[2]
+                fold = int(args[3])
+                if len(args) == 5:
+                    confidence = float(args[4])
+                else:
+                    confidence = 0.5
+
+                predict_data(model, to_be_predicted, fold, confidence)
+        elif args[0].lower() == "mode":
+            if len(args) != 2:
+                print(f"A list of valid classifier modes are: {', '.join(MODES.keys())}")
+            else:
+                new_mode = args[1]
+                update_classifier_mode(new_mode)
         elif args[0].lower() == "quit":
             break
+        elif args[0].lower() == "help":
+            print_help()
 
 
 if __name__ == "__main__":

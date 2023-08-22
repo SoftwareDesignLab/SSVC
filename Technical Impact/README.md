@@ -3,27 +3,26 @@ This folder contains documents related to the automating the technical impact de
 
 ## What are the classifiers used for?
 
-### Impact Classifier
-The impact classifier is a BERT Binary classification model that utilizes text classification to take in CVE descriptions and output a technical impact binary value of total or partial impact. Total impact represents when 
+### Binary Classifier
+The binary classifier is a multi-modal binary classifier that utilizes text classification to take in Text (CVE descriptions typically) and output a Decision value based on the modes defined in the **MODES** dictionary at the top of the script. These modes are completely dynamic and should not have any problems creating and removing modes of the models. The only thing that is important to note is that the values are case sensitive to the data you feed it, so make sure that if you are putting in 'Partial' in the datafile, make sure to put 'Partial' in the modes dictionary.
+
 
 In terms of data processing and input the code and model accepts intake of CSV files that are in the format of the following:
 
 ```
-Text,Class
-Desc,total
-Desc2,partial
+Text,Decision
+Desc,total/decision1
+Desc2,partial/decision0
 ```
 It is important to note that these CSV headers are **case-sensitive**, and you will run into errors when training if you do not follow the casings above.
 
-### Confidentiality/Integrity (CI) Classifier
-The CI classifier is a BERT multi-class classification model that utilizes text classification to take in CVE descriptions and output a value for its confidentiality or confidentiality. this output is either NONE, LOW or HIGH in regard of what severity of impact that the CVE had on either confidentiality or integrity.
-
-It is important to note that you must run an experiment to identify confidentiality OR an experiment to determine integrity. These experiments cannot intermix. 
-
+### Multiclass Classifier
+The multiclass classifier is a multi-modal multiclass classifier that utilizes text classification to take in Text (CVE descriptions typically) and output a class based on the mode selected and mode defined in the **MODES** dictionary at the top of the script. These modes are completely dynamic and should not have any problems creating and removing modes of the models. The only thing that is important to note is that the values are case sensitive to the data you feed it, so make sure that if you are putting in 'HIGH' in the datafile, make sure to put 'HIGH' in the modes dictionary.
 
 
 In terms of data processing and input the code and model accepts intake of CSV files that are in the format of the following:
 
+(Example based on technical impact, but it would work the same with new modes you define)
 ```
 Text,Class
 Desc,LOW
@@ -33,6 +32,39 @@ Desc3,HIGH
 It is important to note that these CSV headers are **case-sensitive**, and you will run into errors when training if you do not follow the casings above.
 Another requirement is that the classes should all be capitalized to run effectively with no issues. 
 
+### Modes Dictionary Example
+#### Binary
+```python
+# Binary modes do not have any more values other than 0 and 1
+MODES = {
+    "TECHNICAL_IMPACT": {
+        0: "partial",
+        1: "total"
+    },
+    "AUTOMATABILITY": {
+        0: "NO",
+        1: "YES"
+    }
+}
+```
+
+#### Multiclass
+```python
+# multiclass can have 0..n values
+MODES = {
+    "TECHNICAL_IMPACT": {
+        0: "NONE",
+        1: "LOW",
+        2: "HIGH"
+    },
+    "AUTOMATABILITY": {
+        0: "None",
+        1: "Reconnaissance",
+        2: "Weaponization",
+        3: "Delivery"
+    }
+}
+```
 
 ## Set up your environment to run
 
