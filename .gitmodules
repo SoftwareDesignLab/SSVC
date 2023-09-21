@@ -1,0 +1,3 @@
+[submodule "Exploitation Status/Exploit Collection and Reproducibility Analysis/openexploitdatabasescraper"]
+	path = Exploitation Status/Exploit Collection and Reproducibility Analysis/openexploitdatabasescraper
+	url = https://github.com/crcresearch/openexploitdatabasescraper.git
