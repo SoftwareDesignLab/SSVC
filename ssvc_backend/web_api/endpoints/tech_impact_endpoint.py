@@ -2,24 +2,27 @@ import os
 from pathlib import Path
 from flask import make_response, jsonify
 from flask_restful import Resource
-from ssvc_backend.exploit_status.exploit_status_backend import get_exploit_status
+from ssvc_backend.tech_impact.tech_impact_backend import get_tech_impact
 
-class ExploitStatusApi(Resource):
+class TechImpactApi(Resource):
+    """
+    Flask endpoint for technical impact to interact with the various apis and resources available to
+    generate and return information relating to the CVE.
+    """
     def get(self, cve_id):
         """
-        Method to get the exploit status for a specific cve
+        Method to determine whether a CVE's technical impact if exploited
         :return:
         """
 
-        # access exploit status setting the working directory into
-        status = get_exploit_status(cve_id, working_dir=os.path.join(os.path.dirname(__file__), "..", ".."), print_status=False)
+        impact = get_tech_impact(cve_id, print_status=False)
 
         # package respones into dictionary to convert into json
-        if status is not None:
-            # respond normally with a cave id and an the exploit status
+        if impact is not None:
+            # respond normally with a CVE ID and it's technical impact
             response_data = {
                 "cveId": cve_id,
-                "exploitStatus": status
+                "tech_impact": impact,
             }
         else:
             # if the status is None, an error occured, send a message to the user
@@ -27,6 +30,6 @@ class ExploitStatusApi(Resource):
                 "cveId": cve_id,
                 "message": "There was an error with your request. Please ensure you inputted a valid CVE ID and proper delay with requests."
             }
-        response = make_response(jsonify(response_data), 200 if status is not None else 400)
+        response = make_response(jsonify(response_data), 200 if impact is not None else 400)
         response.headers["Content-Type"] = "application/json"
         return response
