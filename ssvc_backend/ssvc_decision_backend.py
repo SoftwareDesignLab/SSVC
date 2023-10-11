@@ -115,6 +115,34 @@ def get_ssvc_score(cve_id: str, mission: str, well_being: str, description=None,
     # return decision and the data associated with the decision
     return __SSVC_SCORING_TREE[data], data
 
+
+def get_score_api_bypass(cve_id, description, mwb_impact, exploit_status):
+    """
+    Determining SSVC score for a cve with information that is already given/provided.
+    This is not a recommended method of determining the value without ensuring values are correct
+    and data provided is accurate with appropriate CNAs, if you do not have this information or think
+    exploit status or something may change, please use get_ssvc_score()
+    @param cve_id: CVE id being scored
+    @param description: Descrpition of CVE
+    @param mwb_impact: the impact of mission and well being, either "LOW", "MEDIUM" or "HIGH.
+    @param exploit_status: exploit status of cve
+    @return: ssvc score or none if not found
+    """
+    # Retrieve values if not in cache
+    tech_impact = get_tech_impact(cve_id, description=description)
+    auto = is_automatable(cve_id, description=description)
+    exploit = get_exploit_status(cve_id)
+
+    # Convert retrieved information into a tuple and check the tree in
+    data = (exploit, auto, tech_impact, mwb_impact)
+
+    # If something went wrong, return None
+    if data not in __SSVC_SCORING_TREE:
+        return None
+
+    # return decision and the data associated with the decision
+    return __SSVC_SCORING_TREE[data], data
+
 def main():
     while True:
         cve_id = input("enter cve_id: ")
