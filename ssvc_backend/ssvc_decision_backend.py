@@ -131,10 +131,9 @@ def get_score_api_bypass(cve_id, description, mwb_impact, exploit_status):
     # Retrieve values if not in cache
     tech_impact = get_tech_impact(cve_id, description=description)
     auto = is_automatable(cve_id, description=description)
-    exploit = get_exploit_status(cve_id)
 
     # Convert retrieved information into a tuple and check the tree in
-    data = (exploit, auto, tech_impact, mwb_impact)
+    data = (exploit_status, auto, tech_impact, mwb_impact)
 
     # If something went wrong, return None
     if data not in __SSVC_SCORING_TREE:
@@ -142,6 +141,28 @@ def get_score_api_bypass(cve_id, description, mwb_impact, exploit_status):
 
     # return decision and the data associated with the decision
     return __SSVC_SCORING_TREE[data], data
+
+def get_decision_from_tree(tech_impact, automatable: bool, exploit_status):
+    """
+    Get decision from tree for all mission and well being decisions with values that are provided
+    by the user for other key points of the ssvc decision tree.
+    @param tech_impact: the impact on the system (total or partial)
+    @param automatable: whether the exploit can be automated (True or False)
+    @param exploit_status: exploit status of the vulnerability (NONE, POC, ACTIVE)
+    @return: SSVC Decisions for LOW, MEDIUM, HIGH mission and well being
+    """
+
+    low_data = (exploit_status.upper(), automatable, tech_impact.lower(), "LOW")
+    med_data = (exploit_status.upper(), automatable, tech_impact.lower(), "MEDIUM")
+    high_data = (exploit_status.upper(), automatable, tech_impact.lower(), "HIGH")
+
+    # if one of the data tuples are not in the tree, then they all wont be in the tree
+    if low_data not in __SSVC_SCORING_TREE:
+        return None
+
+    # return the values for each of them
+    return __SSVC_SCORING_TREE[low_data], __SSVC_SCORING_TREE[med_data], __SSVC_SCORING_TREE[high_data]
+
 
 def main():
     while True:
