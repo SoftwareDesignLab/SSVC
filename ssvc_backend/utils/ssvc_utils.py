@@ -1,3 +1,5 @@
+from json import JSONDecodeError
+
 import requests
 
 def get_description(cve_id):
@@ -8,7 +10,11 @@ def get_description(cve_id):
     """
 
     # making request to get the information of the CVE from
-    request = requests.get(f"https://services.nvd.nist.gov/rest/json/cves/2.0?cveId={cve_id}").json()
+    try:
+        request = requests.get(f"https://services.nvd.nist.gov/rest/json/cves/2.0?cveId={cve_id}").json()
+    except JSONDecodeError:
+        return None
+
     vulnerabilities = request["vulnerabilities"]
 
     # The way that json.loads() loads the cves from the NIST json response
@@ -19,7 +25,6 @@ def get_description(cve_id):
     cve_dict = vulnerabilities[0]
     # The way json
     cve = cve_dict["cve"]
-
     # The description of the vulnerability is in a list of json objects.
     # english is always the first description object in the list.
     # so i will be abusing that to assign to variable
