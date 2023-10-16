@@ -23,6 +23,16 @@ class SsvcScoringApi(Resource):
         description = query['description'] if 'description' in query else None
         exploit_status = query['exploitStatus'] if 'exploitStatus' in query else None
 
+        # if cve_id is not specified, return an error
+        if cve_id is None:
+            response_data = {
+                "cveId": cve_id,
+                "message": "There was an error with your request. Please ensure you inputted a valid CVE ID and proper delay with requests."
+            }
+            response = make_response(jsonify(response_data), 400)
+            response.headers["Content-Type"] = "application/json"
+            return response
+
         # Collect ssvc score
         if mission is not None and well_being is not None:
             score, data = get_ssvc_score(cve_id, mission, well_being, description, exploit_status=exploit_status)

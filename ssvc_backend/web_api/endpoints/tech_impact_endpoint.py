@@ -14,6 +14,15 @@ class TechImpactApi(Resource):
         Method to determine whether a CVE's technical impact if exploited
         :return:
         """
+        # if cve_id is not specified, return an error
+        if cve_id is None:
+            response_data = {
+                "cveId": cve_id,
+                "message": "There was an error with your request. Please ensure you inputted a valid CVE ID and proper delay with requests."
+            }
+            response = make_response(jsonify(response_data), 400)
+            response.headers["Content-Type"] = "application/json"
+            return response
 
         impact = get_tech_impact(cve_id, print_status=False)
 
