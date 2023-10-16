@@ -25,4 +25,6 @@ addgroup -S docker
 adduser -S --shell /bin/bash --ingroup docker vscode
 EOF
 # install Docker tools (cli, buildx, compose)
+# NOTE: to have API accessible from outside sources
+# append -p localhost:5000:5000 to docker run command (or add to Run Options in JetBrains IDEs)
 COPY --from=gloursdocker/docker / /

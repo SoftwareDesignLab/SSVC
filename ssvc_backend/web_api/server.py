@@ -23,4 +23,4 @@ if __name__ == '__main__':
     # TODO CHANGE DEBUG TO FALSE ON PRODUCTION DEPLOY
     # TODO DO NOT USE THIS AS THE PRODUCTION SERVER
     # https://flask.palletsprojects.com/en/3.0.x/deploying/
-    app.run(debug=True)
+    app.run(host="0.0.0.0")
