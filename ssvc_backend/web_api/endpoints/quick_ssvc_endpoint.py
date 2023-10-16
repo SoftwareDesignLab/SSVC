@@ -28,6 +28,8 @@ class QuickSsvcScoringApi(Resource):
 
         low, med, high = get_decision_from_tree(tech_impact, bool(automatable), exploit_status)
 
+        # checking if one of the values is none is sufficient due to all the provided information
+        # being used in all other decision tree determinations.
         if low is not None:
             response_data = {
                 "ssvcScoreLow": low,

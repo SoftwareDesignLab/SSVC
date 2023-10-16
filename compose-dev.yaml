@@ -1,0 +1,15 @@
+services:
+  web:
+    build:
+      context: web_api
+      target: builder
+      stop_signal: SIGINT
+      ports:
+        - "8000:8000"
+      image: docker/dev-environments-default:stable-1
+      init: true
+      volumes:
+        - type: bind
+          source: /var/run/docker.sock
+          target: /var/run/docker.sock
+

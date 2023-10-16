@@ -20,4 +20,5 @@ api.add_resource(SsvcScoringApi, "/ssvc")
 api.add_resource(QuickSsvcScoringApi, "/quickssvc")
 
 if __name__ == '__main__':
+    # TODO CHANGE DEBUG TO FALSE ON PRODUCTION DEPLOY
     app.run(debug=True)
