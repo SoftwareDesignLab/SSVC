@@ -78,7 +78,7 @@ def get_ssvc_score(cve_id: str, mission: str, well_being: str, description=None,
     if description is None:
         description = get_description(cve_id)
         if description is None:
-            return None
+            return None, None
 
     # Check the cached data in the script
     cache_key = (cve_id.upper(), mission.upper(), well_being.upper())
@@ -110,7 +110,7 @@ def get_ssvc_score(cve_id: str, mission: str, well_being: str, description=None,
 
     # If something went wrong, return None
     if data not in __SSVC_SCORING_TREE:
-        return None
+        return None, None
 
     # return decision and the data associated with the decision
     return __SSVC_SCORING_TREE[data], data

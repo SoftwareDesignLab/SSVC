@@ -31,6 +31,9 @@ MODES = {
 SELECTED_MODE_NAME = "TECHNICAL_IMPACT"
 SELECTED_MODE_DICT = MODES[SELECTED_MODE_NAME]
 
+# Dictionary to store trained models (with specified fold) in tuple and the model weighted
+# this is for predictions only, and is not recommended for anything else
+CACHED_WEIGHTS = dict()
 
 def update_classifier_mode(new_mode):
     """
@@ -646,8 +649,13 @@ def predict_description(model_name, cve_description, working_dir=os.path.dirname
     """
 
     # get and load weights to the model
-    model = get_bert_model()
-    model.load_weights(os.path.join(working_dir, f'models/{model_name}/fold_{fold}'))
+    global CACHED_WEIGHTS
+    if (model_name, fold) not in CACHED_WEIGHTS:
+        model = get_bert_model()
+        model.load_weights(os.path.join(working_dir, f'models/{model_name}/fold_{fold}'))
+        CACHED_WEIGHTS[(model_name, fold)] = model
+    else:
+        model = CACHED_WEIGHTS[(model_name, fold)]
 
     init_data = {"Text": cve_description}
     df = pd.DataFrame(data=[init_data])
@@ -657,14 +665,11 @@ def predict_description(model_name, cve_description, working_dir=os.path.dirname
     predictions = predictions.flatten()
     # Set prediction to 1 if > confidence_interval
     predictions = np.where(predictions > confidence_interval, 1, 0)
-    data = []
 
     for i, cve in enumerate(input):
         # create string of decision based off modes settings (see MODES global for specifics)
         decision = SELECTED_MODE_DICT[1] if predictions[i] == 1 else SELECTED_MODE_DICT[0]
-        data.append(decision)  # add to list of predictions to add to df.
-
-    return data[0]
+        return decision
 
 def main():
     """

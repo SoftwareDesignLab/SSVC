@@ -39,12 +39,15 @@ class SsvcScoringApi(Resource):
             # if the mission and wellbeing was not given, start with requesting the information normally but for low
             # and then request the score by the way of bypassing the exploit status NVD request since exploit status
             # will be correct and accurate (Allows for test of ACTIVE exploitation) before continuing without verifying.
-            score, data = get_ssvc_score(cve_id, "MINIMAL", "MINIMAL", description=description,
-                                         exploit_status=exploit_status)
-            exploit_status = data[0]
-            # get decisions based on medium and high values of mission and well being impact
-            med_score, med_data = get_score_api_bypass(cve_id, description, "MEDIUM", exploit_status)
-            high_score, high_data = get_score_api_bypass(cve_id, description, "HIGH", exploit_status)
+
+            score, data = get_ssvc_score(cve_id, "MINIMAL", "MINIMAL", description=description, exploit_status=exploit_status)
+
+            # ensure that the values are valid.
+            if score is not None:
+                exploit_status = data[0]
+                # get decisions based on medium and high values of mission and well being impact
+                med_score, med_data = get_score_api_bypass(cve_id, description, "MEDIUM", exploit_status)
+                high_score, high_data = get_score_api_bypass(cve_id, description, "HIGH", exploit_status)
         # package respones into dictionary to convert into json
         if score is not None:
             # respond normally with a CVE ID, It's SSVC Score, and information regarding decisions
@@ -75,3 +78,13 @@ class SsvcScoringApi(Resource):
         response = make_response(jsonify(response_data), 200 if score is not None else 400)
         response.headers["Content-Type"] = "application/json"
         return response
+
+def error_response(cve_id):
+    response_data = {
+        "cveId": cve_id,
+        "message": "There was an error with your request. Please ensure you inputted a valid CVE ID and proper delay with requests."
+    }
+
+    response = make_response(jsonify(response_data), 400)
+    response.headers["Content-Type"] = "application/json"
+    return response
