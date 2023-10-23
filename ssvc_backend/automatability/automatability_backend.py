@@ -26,9 +26,9 @@ def is_automatable(cve_id, working_dir=os.path.dirname(__file__), print_status=T
     error_msg = "There was an error with your request, please ensure you inputted a valid CVE ID, and have not been flooding requests."
 
     # check cache before doing anything
-    global __DECISION_CACHE
-    if cve_id in __DECISION_CACHE:
-        return __DECISION_CACHE[cve_id]
+    # global __DECISION_CACHE
+    # if cve_id in __DECISION_CACHE:
+    #     return __DECISION_CACHE[cve_id]
 
     try:
         if description is None:

@@ -81,13 +81,13 @@ def get_ssvc_score(cve_id: str, mission: str, well_being: str, description=None,
             return None, None
 
     # Check the cached data in the script
-    cache_key = (cve_id.upper(), mission.upper(), well_being.upper())
-    if cache_key in __DECISION_CACHE:
-        cached_tuple = __DECISION_CACHE[cache_key]
-        ssvc_score = cached_tuple[0]
-        data_tuple = cached_tuple[1]
-
-        return ssvc_score, data_tuple
+    # cache_key = (cve_id.upper(), mission.upper(), well_being.upper())
+    # if cache_key in __DECISION_CACHE:
+    #     cached_tuple = __DECISION_CACHE[cache_key]
+    #     ssvc_score = cached_tuple[0]
+    #     data_tuple = cached_tuple[1]
+    #
+    #     return ssvc_score, data_tuple
 
     # Retrieve values if not in cache
     tech_impact = get_tech_impact(cve_id, description=description)
