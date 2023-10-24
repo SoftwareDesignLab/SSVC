@@ -23,6 +23,10 @@ class SsvcScoringApi(Resource):
         description = query['description'] if 'description' in query else None
         exploit_status = query['exploitStatus'] if 'exploitStatus' in query else None
 
+        # if description is not specified, set to None to auto-retrieve a description
+        if description == "":
+            description = None
+
         # if cve_id is not specified, return an error
         if cve_id is None or cve_id == "":
             response_data = {

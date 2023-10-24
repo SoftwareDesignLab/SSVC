@@ -12,10 +12,10 @@ app = Flask(__name__)
 
 api = Api(app)
 
-api.add_resource(ExploitStatusApi, '/exploitstatus/<cve_id>')
-api.add_resource(AutomatabilityApi, '/automatability/<cve_id>')
-api.add_resource(MissionWellbeingApi, '/wellbeing/<mission>/<well_being>')
-api.add_resource(TechImpactApi, '/techimpact/<cve_id>')
+api.add_resource(ExploitStatusApi, '/exploitstatus')
+api.add_resource(AutomatabilityApi, '/automatability')
+api.add_resource(MissionWellbeingApi, '/wellbeing')
+api.add_resource(TechImpactApi, '/technicalimpact')
 api.add_resource(SsvcScoringApi, "/ssvc")
 api.add_resource(QuickSsvcScoringApi, "/quickssvc")
 
