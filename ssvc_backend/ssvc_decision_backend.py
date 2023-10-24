@@ -93,7 +93,7 @@ def get_ssvc_score(cve_id: str, mission: str, well_being: str, description=None,
     tech_impact = get_tech_impact(cve_id, description=description)
     auto = is_automatable(cve_id, description=description)
 
-    exploit = get_exploit_status(cve_id)
+    exploit, rationale = get_exploit_status(cve_id)
 
     # If exploit status provided by user is a POC, but NVD does not have
     # record of CVE, or other exploit status checks aren't passed
@@ -102,18 +102,23 @@ def get_ssvc_score(cve_id: str, mission: str, well_being: str, description=None,
     if exploit_status is not None and exploit_status.upper() == "POC":
         if not exploit == "ACTIVE":
             exploit = "POC"
+            rationale = "Exploit Collection"
 
     mission_impact = get_mission_and_wellbeing_impact(mission, well_being)
 
     # Convert retrieved information into a tuple and check the tree in
     data = (exploit, auto, tech_impact, mission_impact)
 
+    # return the data with a tuple representing exploit status with the rationale of why
+    # that is the case
+    data_with_rationale = ((exploit, rationale), auto, tech_impact, mission_impact)
+
     # If something went wrong, return None
     if data not in __SSVC_SCORING_TREE:
         return None, None
 
     # return decision and the data associated with the decision
-    return __SSVC_SCORING_TREE[data], data
+    return __SSVC_SCORING_TREE[data], data_with_rationale
 
 
 def get_score_api_bypass(cve_id, description, mwb_impact, exploit_status):

@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from flask import make_response, jsonify, request
 from flask_restful import Resource
-from ssvc_backend.ssvc_decision_backend import get_ssvc_score, get_score_api_bypass
+from ssvc_backend.ssvc_decision_backend import get_ssvc_score, get_score_api_bypass, get_decision_from_tree
 
 
 class SsvcScoringApi(Resource):
@@ -48,16 +48,22 @@ class SsvcScoringApi(Resource):
 
             # ensure that the values are valid.
             if score is not None:
-                exploit_status = data[0]
+                exploit_status_tuple = data[0]
+                print(exploit_status_tuple)
+                exploit_status = str(exploit_status_tuple[0])
+                exploit_status_rationale = exploit_status_tuple[1]
                 # get decisions based on medium and high values of mission and well being impact
-                med_score, med_data = get_score_api_bypass(cve_id, description, "MEDIUM", exploit_status)
-                high_score, high_data = get_score_api_bypass(cve_id, description, "HIGH", exploit_status)
+                low, med_score, high_score = get_decision_from_tree(data[2], data[1], exploit_status)
         # package respones into dictionary to convert into json
         if score is not None:
             # respond normally with a CVE ID, It's SSVC Score, and information regarding decisions
+            exploit_status_tuple = data[0]
+            exploit_status = exploit_status_tuple[0]
+            exploit_status_rationale = exploit_status_tuple[1]
             response_data = {
                 "cveId": cve_id,
-                "exploitStatus": data[0],
+                "exploitStatus": exploit_status,
+                "exploitStatusRationale": exploit_status_rationale,
                 "automatable": data[1],
                 "technicalImpact": data[2],
             }
