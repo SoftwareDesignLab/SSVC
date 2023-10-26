@@ -39,7 +39,7 @@ class TechImpactApi(Resource):
             # respond normally with a CVE ID and it's technical impact
             response_data = {
                 "cveId": cve_id,
-                "tech_impact": impact,
+                "technicalImpact": impact,
             }
         else:
             # if the status is None, an error occured, send a message to the user
