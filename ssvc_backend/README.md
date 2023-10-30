@@ -65,7 +65,7 @@ This endpoint also allows for assisting details that would allow for scoring of 
 **Other Parameters**
 - `description`: description of the vulnerability that you are scoring. (Optional: if not provided, it will check NVD's database). This is a recommended supplied parameter due to faster response times and avoiding being rate limited by NVD and preventing delays in scoring.
 - `exploitStatus`: current status of the exploitability of the vulnerability. If you provide the value of POC, it will assume you have done exploit collection and take it at face value. However, it will still check the Known Exploited Vulnerabilities (KEV) database from NVD for active exploitation. 
-- `mission` and `wellbeing`: these are the most unique parameters out of the parameters, because they depend on each other. Both must be provided to accurately score for the scenario relating to **YOUR** software, project and company. To know what to send into these values, please refer to [here](https://www.cisa.gov/sites/default/files/publications/cisa-ssvc-guide%20508c.pdf) for specific values to submit. 
+- `mission` and `wellbeing`: these are the unique parameters out of the parameters, because they depend on each other. Both must be provided to accurately score for the scenario relating to **YOUR** software, project and company. To know what to send into these values, please refer to [here](https://www.cisa.gov/sites/default/files/publications/cisa-ssvc-guide%20508c.pdf) for specific values to submit. 
 If these values are not submitted, the api will return a decision for each case of mission and wellbeing impact on the ssvc score. 
 
 #### Example Requests (SSVC)
@@ -454,7 +454,7 @@ You can use any and all combinations of the parameters above in your requests. T
     }
   ```
 
-- Response Explanation: The response is very simple and lets you know if the machine learning models that the cve's description was ran against, thinks that this cve is able to be automatically exploited.
+- Response Explanation: The response is very simple and lets you know if the machine learning models that the cve's description ran against, thinks that this cve is able to be automatically exploited.
 
 ### Exploit Status
 
@@ -508,7 +508,7 @@ To use the API, make HTTP requests to the desired endpoints. You can use tools l
 The API provides appropriate error responses for invalid requests. You will receive a JSON response with an error message in case of errors.
 
 ### Machine Learning / Tensorflow Errors:
-Dealing with Machine Learning models and TensorFlow specifically can rpove to be challenging, and at some points there can be sporadic issues where Tensorflow cannot access the temporary files it creates. If this happens, and there are internal server errors, a lot of times you can clear the temporary file directory on your machine, and specifically tensorflows. 
+Dealing with Machine Learning models and TensorFlow specifically can prove to be challenging, and at some points there can be sporadic issues where Tensorflow cannot access the temporary files it creates. If this happens, and there are internal server errors, a lot of times you can clear the temporary file directory on your machine, and specifically TensorFlow's, and that tends to fix most of the issues that are created. 
 
 ## Conclusion
 
