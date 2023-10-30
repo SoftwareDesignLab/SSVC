@@ -43,7 +43,7 @@ If you want to deploy this on a production server, please read the Flask
 documentation on deployment here:
 https://flask.palletsprojects.com/en/2.2.x/deploying/
 
-For those who wish to run it in a docker container, the docker files are there for you to run. Just make sure to have your ports exposed and proper python pathing, when making changes and running Docker files.
+For those who wish to run it in a Docker container, the Docker files are there for you to run. Just make sure to have your ports exposed and proper python pathing, when making changes and running Docker files.
 
 ```bash
 python ssvc_backend/web_api/server.py
