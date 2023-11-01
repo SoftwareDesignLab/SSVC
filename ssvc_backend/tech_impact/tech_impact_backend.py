@@ -2,8 +2,10 @@ import os
 import requests
 import pandas as pd
 from requests import JSONDecodeError
+
+from TechnicalImpact.BERTClassifier import binary_classifier
 from ssvc_backend.utils.ssvc_utils import get_description
-import TechnicalImpact.logreg_model as logreg_model
+import TechnicalImpact.hawaii_models as hawaii_models
 
 # global dictionary that will cache decisions to save time, and liimt repeated requests to API
 # Key = CVE_ID Value = decision
@@ -32,11 +34,11 @@ def get_tech_impact(cve_id, working_dir=os.path.dirname(__file__), print_status=
         if description is None:
             desc = get_description(cve_id)
 
-            if desc is None:
+            if desc is None or desc == "REJECTED":
                 # input cve into cache before returning
                 # if the description is none there is not a CVE with that ID
                 # there would be an error if it was rate limiting
-                __DECISION_CACHE[cve_id] = None
+                # __DECISION_CACHE[cve_id] = None
                 if print_status:
                     print(error_msg)
                 return None
@@ -47,7 +49,7 @@ def get_tech_impact(cve_id, working_dir=os.path.dirname(__file__), print_status=
             print(f"[Technical Impact] Processing description: {desc}")
 
         # call prediction function
-        impact = logreg_model.predict_description(desc, working_dir)
+        impact = hawaii_models.predict_description(desc, working_dir)
 
         # print technical impact
         if print_status:

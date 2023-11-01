@@ -77,7 +77,8 @@ def get_ssvc_score(cve_id: str, mission: str, well_being: str, description=None,
     # Get description of CVE return None if desc is none
     if description is None:
         description = get_description(cve_id)
-        if description is None:
+
+        if description is None or description == "REJECTED":
             return None, None
 
     # Check the cached data in the script

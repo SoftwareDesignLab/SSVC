@@ -34,11 +34,11 @@ def is_automatable(cve_id, working_dir=os.path.dirname(__file__), print_status=T
         if description is None:
             description = get_description(cve_id)
 
-            if description is None:
+            if description is None or description == "REJECTED":
                 # input cve into cache before returning
                 # if the description is none there is not a CVE with that ID
                 # there would be an error if it was rate limiting
-                __DECISION_CACHE[cve_id] = None
+                # __DECISION_CACHE[cve_id] = None
                 if print_status:
                     print(error_msg)
                 return None

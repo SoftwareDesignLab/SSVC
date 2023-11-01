@@ -28,6 +28,11 @@ def get_description(cve_id):
     # The description of the vulnerability is in a list of json objects.
     # english is always the first description object in the list.
     # so i will be abusing that to assign to variable
+    status = cve["vulnStatus"]
+
+    if status == "Rejected":
+        return "REJECTED"
+
     description = cve["descriptions"][0]["value"]
 
     return description
