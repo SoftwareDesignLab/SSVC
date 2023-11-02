@@ -49,7 +49,7 @@ def get_tech_impact(cve_id, working_dir=os.path.dirname(__file__), print_status=
             print(f"[Technical Impact] Processing description: {desc}")
 
         # call prediction function
-        impact = hawaii_models.predict_description(desc, working_dir)
+        impact = hawaii_models.predict_description("forest_bow_synaug", desc, working_dir)
 
         # print technical impact
         if print_status:

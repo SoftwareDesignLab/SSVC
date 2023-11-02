@@ -2,18 +2,35 @@ from json import JSONDecodeError
 
 import requests
 
-def get_description(cve_id):
+def get_json(cve_id):
     """
-    A function that takes in a CVE ID and calls the NVD api and returns its description
-    :param cve_id: id of the cve
-    :return: list of cwes associated with a cve
+    Method to get the json response as a dictionary from the requests library
+    this can be sent thorugh
+    @param cve_id:
+    @return:
     """
-
-    # making request to get the information of the CVE from
     try:
         request = requests.get(f"https://services.nvd.nist.gov/rest/json/cves/2.0?cveId={cve_id}").json()
     except JSONDecodeError:
         return None
+    return request
+
+def get_description(cve_id, json_data=None):
+    """
+    A function that takes in a CVE ID and calls the NVD api and returns its description
+    :param cve_id: id of the cve
+    :param json_data: json data that would be returned by a requests.get() call. It will avoid calling api if provided
+    :return: list of cwes associated with a cve
+    """
+
+    # making request to get the information of the CVE from
+    if json_data is None:
+        try:
+            request = requests.get(f"https://services.nvd.nist.gov/rest/json/cves/2.0?cveId={cve_id}").json()
+        except JSONDecodeError:
+            return None
+    else:
+        request = json_data
 
     vulnerabilities = request["vulnerabilities"]
 

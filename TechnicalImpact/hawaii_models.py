@@ -24,7 +24,7 @@ import joblib
 ###
 ### Load dataset
 ###
-# dataset = "Old-and-new-tech-impact-trimmed"
+# dataset = "Automatability-Data-Multiclass-noExp"
 #
 # tech_impact_columns_mapping = {
 #     'CONFIDENTIALITY': {'NONE': 0, 'LOW': 1, 'HIGH': 2},
@@ -93,7 +93,7 @@ import joblib
 #
 #     # Total Class length is 13976 if you want to keep the entire thing for old-and-new dataset
 #     # Total Class length is 167 if you want to keep the entire thing for automatability
-#     num_samples_to_keep = 13976  # len(total_class)
+#     num_samples_to_keep = 167  # len(total_class)
 #
 #     print("Number of Samples to Keep: {}".format(num_samples_to_keep))
 #
@@ -218,8 +218,8 @@ def perform(X_description, y, model, classification, augment_synonyms=True, X_in
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
         # saving model weight for predictions
-        joblib.dump(model, f"large_forest_bow_synaug.joblib")
-        joblib.dump(v, "large_forest_bow_vectorizer.pkl")
+        joblib.dump(model, f"auto_forest_bow_synaug.joblib")
+        joblib.dump(v, "auto_forest_bow_vectorizer.pkl")
         # calculate metrics
         precision = precision_score(y_test, y_pred, average=classification)
         recall = recall_score(y_test, y_pred, average=classification)
@@ -239,15 +239,15 @@ def perform(X_description, y, model, classification, augment_synonyms=True, X_in
     print("Mean - Auroc: {:.4f} +/- {:.4f}".format(np.mean(average_auroc), np.std(average_auroc)))
 
 
-def predict_description(cve_description, working_dir=os.path.dirname(__file__)):
+def predict_description(model_name, cve_description, working_dir=os.path.dirname(__file__)):
     """
     The predict data function will load an already trained Logistic Regression model with synonym augmentatoin and Bag of Words
     implementation, and process and predict a cve_descrpition that is passed into the function.
     :param cve_description: description of cve being determined
     :return: prediction string
     """
-    model = joblib.load(os.path.join(working_dir, "models/forest_bow_synaug.joblib"))
-    vectorizer = joblib.load(os.path.join(working_dir, "models/forest_bow_vectorizer.pkl"))
+    model = joblib.load(os.path.join(working_dir, f"models/{model_name}.joblib"))
+    vectorizer = joblib.load(os.path.join(working_dir, f"models/{model_name}_vectorizer.pkl"))
     # Augment the text with synonyms
     df = pd.Series([cve_description])
 
@@ -266,19 +266,19 @@ def predict_description(cve_description, working_dir=os.path.dirname(__file__)):
     return data[0]
 
 # models = [MultinomialNB(), KNeighborsClassifier(), LogisticRegression(), RandomForestClassifier(), SVC(probability=True), GradientBoostingClassifier(), MLPClassifier()]
-# models = [RandomForestClassifier()]
+models = [RandomForestClassifier()]
 
 #
 # Description --> Automatable
 #
 # warnings.filterwarnings("ignore")
-#
+# #
 # X_description = df['CVE Description']
 # y = df['Automatable? (Final Decision)']
 #
 # for model in models:
 #   print(model)
-#   perform(X_description=X_description, y=y, model=model, classification=binary_classification)
+#   perform(X_description=X_description, y=y, model=model, classification=binary_classification, augment_synonyms=False)
 #   print("========================================================")
 #
 # Reset warnings filter

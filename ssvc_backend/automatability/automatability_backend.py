@@ -3,6 +3,7 @@ import requests
 import pandas as pd
 from requests import JSONDecodeError
 import TechnicalImpact.BERTClassifier.binary_classifier as binary_classifier
+from TechnicalImpact import hawaii_models
 from ssvc_backend.utils.ssvc_utils import get_description
 
 # IMPORTANT NOTE: make sure you have openpyxl installed.
@@ -54,7 +55,7 @@ def is_automatable(cve_id, working_dir=os.path.dirname(__file__), print_status=T
                                                             working_dir=working_dir,
                                                             cve_description=description,
                                                             fold=5)
-
+        # automatable = hawaii_models.predict_description("auto_forest_bow", description, working_dir=working_dir)
         # print automatability
         if print_status:
             print(f"{cve_id} is automatable." if automatable == "YES" else f"{cve_id} is NOT automatable.")

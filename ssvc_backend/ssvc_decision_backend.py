@@ -2,6 +2,7 @@ from ssvc_backend.automatability.automatability_backend import *
 from ssvc_backend.exploit_status.exploit_status_backend import *
 from ssvc_backend.mission_wellbeing.mission_and_wellbeing_backend import *
 from ssvc_backend.tech_impact.tech_impact_backend import *
+from ssvc_backend.utils.ssvc_utils import get_json
 
 # SSVC Scoring Tree is a dictionary to correlate values to a SSVC CISA scoring
 # Keys = Tuple value = SSVC Score (str)
@@ -76,7 +77,11 @@ def get_ssvc_score(cve_id: str, mission: str, well_being: str, description=None,
 
     # Get description of CVE return None if desc is none
     if description is None:
-        description = get_description(cve_id)
+        json = get_json(cve_id)
+        if json is None:
+            return None, None
+
+        description = get_description(cve_id, json_data=json)
 
         if description is None or description == "REJECTED":
             return None, None
