@@ -1,6 +1,5 @@
 # SSVC API README
 
-(Enter goal here)
 
 ## Getting Started
 
@@ -62,8 +61,8 @@ This endpoint also allows for assisting details that would allow for scoring of 
 **Other Parameters**
 - `description`: description of the vulnerability that you are scoring. (Optional: if not provided, it will check NVD's database). This is a recommended supplied parameter due to faster response times and avoiding being rate limited by NVD and preventing delays in scoring.
 - `exploitStatus`: current status of the exploitability of the vulnerability. If you provide the value of POC, it will assume you have done exploit collection and take it at face value. However, it will still check the Known Exploited Vulnerabilities (KEV) database from NVD for active exploitation. 
-- `mission` and `wellbeing`: these are the unique parameters out of the parameters, because they depend on each other. Both must be provided to accurately score for the scenario relating to **YOUR** software, project and company. To know what to send into these values, please refer to [here](https://www.cisa.gov/sites/default/files/publications/cisa-ssvc-guide%20508c.pdf) for specific values to submit. 
-If these values are not submitted, the api will return a decision for each case of mission and wellbeing impact on the ssvc score. 
+- `mission` and `wellbeing`: these are unique parameters because they require each other. Both must be provided to accurately score for the scenario relating to **YOUR** software, project and company. To know what to send into these values, please refer to [here](https://www.cisa.gov/sites/default/files/publications/cisa-ssvc-guide%20508c.pdf) for specific values to submit. 
+If these values are not submitted, the api will return a decision for each case (_low_, _medium_, and _high_) of mission and well-being impact on the SSVC score. 
 
 #### Example Requests (SSVC)
 
@@ -83,7 +82,7 @@ If these values are not submitted, the api will return a decision for each case 
     }
   ```
 
-- Response Explanation: SSVC's goal is to give you the most information about your CVE automatically, so we run a varierty of algorithms and research methods to automatically score these cves in the most accurate way we can. This response is what you would get if you just provided an already published CVE that was found in the NVD. It would grab the description and then process it into our Machine Learning models to determine its technical impact on a system and whether it is able to be automatically exploited. It also will determine its exploit status based off the information we have, either KEV or CWEtoPOC, or Nothing, and we will let you know via the `exploitStatusRationale` response. Since we did not provide the mission and wellbeing you will notice that there is 3 scores  that correlate to the level of impact an exploit has on your company or system. 
+- Response Explanation: SSVC's goal is to give you the most information about your CVE automatically, so we run a varierty of algorithms and research methods to automatically score these cves in the most accurate way we can. This response is what you would get if you just provided an already published CVE that was found in the NVD. It would grab the description and then process it into our Machine Learning models to determine its technical impact on a system and whether it is able to be automatically exploited. It also will determine its exploit status based off the information we have, either KEV or CWEtoPOC, or Nothing, and we will let you know via the `exploitStatusRationale` response. Since we did not provide the mission and well-being, you will notice that there are 3 scores that correlate to the level of impact an exploit has on your company or system. 
 
 **Example 2: CVE-ID and Exploit Status given due to collection:**
 - Example Request: `GET /ssvc?cveId=CVE-2022-3381&exploitStatus=POC`
@@ -118,7 +117,7 @@ If these values are not submitted, the api will return a decision for each case 
     }  
   ```
 
-- Response Explanation: This response is the same as the first response, however there are less `ssvcScore` values and the inclusion of the severity of impact on `missionAndWellbeing` which is returned in the response. The ssvc score value returned is the specific value for this provided instance.
+- Response Explanation: This response is the same as the first response, however there are less `ssvcScore` values and the inclusion of the severity of impact on `missionAndWellbeing` which is returned in the response. The SSVC score value returned is the specific value for this provided instance.
 
 **Example 4: Private/Undisclosed CVE-ID and Provided Description:**
 - Example Request: `GET /ssvc?cveId=CVE-2150-1000&description=There is an internal module that can be exploited to cause reomte code execution within the kernel.`
@@ -139,7 +138,7 @@ If these values are not submitted, the api will return a decision for each case 
 - Response Explanation: This response is the same as the previous ones, but the main thing this response shows is, SSVC automatic scoring can be used for internal and hypothetical situations for you and your team, you don't have to wait for NVD disclosures if you need to know.
 
 
-**Example 4: Invalid Response (Improper CVE / Rate Limit)**
+**Example 5: Invalid Response (Improper CVE / Rate Limit)**
 - Example Request: `GET /ssvc?cveId=CVE-2100-3381`
 - Example Response:
   ```json
@@ -176,7 +175,7 @@ You can use any and all combinations of the parameters above in your requests. T
   ```
 
 - Response Explanation: Quick SSVC's response is given three values that relate to the severity of impact the vulnerability 
-has on mission and wellbeing of the system. `ssvcScoreLow` refers to low mission impact, `ssvcScoreMedium` refers to medium mission impact, and so on.
+has on mission and well-being of the system. `ssvcScoreLow` refers to low mission and well-being impact, `ssvcScoreMedium` refers to medium mission and well-being impact, and `ssvcScoreHigh` refers to high mission and well-being impact.
 
 ### Technical Impact
 
@@ -248,7 +247,7 @@ has on mission and wellbeing of the system. `ssvcScoreLow` refers to low mission
 ### Mission and Well Being
 
 - Endpoint: `/wellbeing`
-- Description: Determine severity of impact that a vulnerability will have on mission and wellbeing based on your own provided values. These are self-determined values and can be found [here](https://www.cisa.gov/sites/default/files/publications/cisa-ssvc-guide%20508c.pdf)
+- Description: Determine severity of impact that a vulnerability will have on mission and well-being based on your own provided values. These are self-determined values and can be found [here](https://www.cisa.gov/sites/default/files/publications/cisa-ssvc-guide%20508c.pdf)
 
 **Required Parameters**:
 - `mission`: Impact on a company's mission the vulnerability has.
@@ -262,7 +261,7 @@ has on mission and wellbeing of the system. `ssvcScoreLow` refers to low mission
   }
   ```
 
-- Response Explanation: This response is very short, and it correlates to the value that is needed to compute an SSVC score, and is the value that you could see in the ssvc related endpoints when mission and wellbeing was not provided, it has an impact on the score, so its good to know where vulnerabilites impact your scores.
+- Response Explanation: This response is very short, and it correlates to the value that is needed to compute an SSVC score, and is the value that you could see in the SSVC related endpoints when mission and well-being was not provided, it has an impact on the score, so its good to know where vulnerabilites impact your scores.
 
 ## Usage
 
