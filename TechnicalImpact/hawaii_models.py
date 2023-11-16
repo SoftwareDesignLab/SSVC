@@ -24,7 +24,7 @@ import joblib
 ###
 ### Load dataset
 ###
-# dataset = "Automatability-Data-Multiclass-noExp"
+# dataset = "Automatability-Data-Multiclass-noExp-new-ex-no-heuristics"
 #
 # tech_impact_columns_mapping = {
 #     'CONFIDENTIALITY': {'NONE': 0, 'LOW': 1, 'HIGH': 2},
@@ -53,6 +53,13 @@ import joblib
 #     },
 #     "Automatability-Data-Multiclass-noExp": {
 #         "file_name": "Automatability-Data-Multiclass-noExp.csv",
+#         "binary_classification": 'binary',
+#         "multi_classification": 'none',
+#         "downsample": True,
+#         "columns_mapping": automatability_columns_mapping
+#     },
+#     "Automatability-Data-Multiclass-noExp-new-ex-no-heuristics": {
+#         "file_name": "Automatability-Data-Multiclass-noExp-new-ex-no-heuristics.csv",
 #         "binary_classification": 'binary',
 #         "multi_classification": 'none',
 #         "downsample": True,
@@ -88,12 +95,23 @@ import joblib
 #     if dataset == "Automatability-Data-Multiclass-noExp":
 #         zero_class = df[df["Automatable? (Final Decision)"] == 0]
 #         one_class = df[df["Automatable? (Final Decision)"] == 1]
+#     if dataset == "Automatability-Data-Multiclass-noExp-new-ex-no-heuristics":
+#         zero_class = df[df["Automatable? (Final Decision)"] == 0]
+#         one_class = df[df["Automatable? (Final Decision)"] == 1]
 #     print("Sum of Zero: {}".format(len(zero_class)))
 #     print("Sum of One: {}".format(len(one_class)))
 #
 #     # Total Class length is 13976 if you want to keep the entire thing for old-and-new dataset
 #     # Total Class length is 167 if you want to keep the entire thing for automatability
-#     num_samples_to_keep = 167  # len(total_class)
+#     if len(zero_class) < len(one_class):
+#         # if 0 is < 1 in size, set samples to keep size of 0
+#         num_samples_to_keep = len(zero_class)  # len(total_class)
+#     elif len(one_class) < len(zero_class):
+#         # if 1 is < 0 in size, set samples to keep size of 1
+#         num_samples_to_keep = len(one_class)
+#     else:
+#         # if equal set in half of total set
+#         num_samples_to_keep = (len(zero_class) + len(one_class)) / 2
 #
 #     print("Number of Samples to Keep: {}".format(num_samples_to_keep))
 #
@@ -218,8 +236,8 @@ def perform(X_description, y, model, classification, augment_synonyms=True, X_in
         model.fit(X_train, y_train)
         y_pred = model.predict(X_test)
         # saving model weight for predictions
-        joblib.dump(model, f"auto_forest_bow_synaug.joblib")
-        joblib.dump(v, "auto_forest_bow_vectorizer.pkl")
+        joblib.dump(model, f"auto_new_logreg_bow.joblib")
+        joblib.dump(v, "../ssvc_backend/automatability/models/auto_new_logreg_bow_vectorizer.pkl")
         # calculate metrics
         precision = precision_score(y_test, y_pred, average=classification)
         recall = recall_score(y_test, y_pred, average=classification)
@@ -265,12 +283,38 @@ def predict_description(model_name, cve_description, working_dir=os.path.dirname
 
     return data[0]
 
-# models = [MultinomialNB(), KNeighborsClassifier(), LogisticRegression(), RandomForestClassifier(), SVC(probability=True), GradientBoostingClassifier(), MLPClassifier()]
-models = [RandomForestClassifier()]
+def predict_automatability(model_name, cve_description, working_dir=os.path.dirname(__file__)):
+    """
+    The predict data function will load an already trained Logistic Regression with Bag of Words
+    implementation, and process and predict a cve_descrpition that is passed into the function.
+    :param cve_description: description of cve being determined
+    :return: boolean whether it is automatable
+    """
+    model = joblib.load(os.path.join(working_dir, f"models/{model_name}.joblib"))
+    vectorizer = joblib.load(os.path.join(working_dir, f"models/{model_name}_vectorizer.pkl"))
+    # Augment the text with synonyms
+    df = pd.Series([cve_description])
 
+    # augmented_test_text = synonym_augmentation(df)
+    # Transform the test text using the saved vectorizer
+    X_test = vectorizer.transform(df)
+
+    # Make predictions using the pre-trained model
+    predictions = model.predict(X_test)
+
+    data = []
+    for i, cve in enumerate(predictions):
+        decision = "YES" if predictions[i] == 1 else "NO"
+        data.append(decision)  # add to list of predictions to add to df.
+
+    return data[0]
+
+
+# models = [MultinomialNB(), KNeighborsClassifier(), LogisticRegression(), RandomForestClassifier(), SVC(probability=True), GradientBoostingClassifier(), MLPClassifier()]
+# models = [LogisticRegression()]
 #
-# Description --> Automatable
 #
+# # Description --> Automatable
 # warnings.filterwarnings("ignore")
 # #
 # X_description = df['CVE Description']
@@ -280,7 +324,7 @@ models = [RandomForestClassifier()]
 #   print(model)
 #   perform(X_description=X_description, y=y, model=model, classification=binary_classification, augment_synonyms=False)
 #   print("========================================================")
-#
+
 # Reset warnings filter
 # warnings.resetwarnings()
 
