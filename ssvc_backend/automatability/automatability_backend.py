@@ -51,12 +51,12 @@ def is_automatable(cve_id, working_dir=os.path.dirname(__file__), print_status=T
         # Update the classifier's mode to automatability
         # binary_classifier.update_classifier_mode("AUTOMATABILITY")
         # Call the BERT model to determine its automatability
-        # automatable = binary_classifier.predict_description(model_name="auto_binary_Adam_0015LR",
-        #                                                     working_dir=working_dir,
-        #                                                     cve_description=description,
-        #                                                     fold=5,
-        #                                                     confidence_interval=0.52)
-        automatable = hawaii_models.predict_automatability("auto_new_logreg_bow", description, working_dir=working_dir)
+        automatable = binary_classifier.predict_description(model_name="auto_binary_Adam_0015LR",
+                                                            working_dir=working_dir,
+                                                            cve_description=description,
+                                                            fold=5,
+                                                            confidence_interval=0.5)
+        # automatable = hawaii_models.predict_automatability("auto_forest_bow", description, working_dir=working_dir)
         # print automatability
         if print_status:
             print(f"{cve_id} is automatable." if automatable == "YES" else f"{cve_id} is NOT automatable.")
