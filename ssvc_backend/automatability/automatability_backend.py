@@ -49,7 +49,7 @@ def is_automatable(cve_id, working_dir=os.path.dirname(__file__), print_status=T
             print(f"[Automatability] Processing description: {description}")
 
         # Update the classifier's mode to automatability
-        # binary_classifier.update_classifier_mode("AUTOMATABILITY")
+        binary_classifier.update_classifier_mode("AUTOMATABILITY")
         # Call the BERT model to determine its automatability
         automatable = binary_classifier.predict_description(model_name="auto_binary_Adam_0015LR",
                                                             working_dir=working_dir,
